@@ -53,4 +53,4 @@ function downloadEnhanced() {
     link.href = enhancedImage;
     link.download = 'enhanced_image.png';
     link.click();
-          }
+}
