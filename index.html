@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RenXploit HD Image Resizer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #2c3e50, #4ca1af);
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #34495e;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 650px;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 3em;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .upload-section, .result-section {
+            margin-top: 20px;
+        }
+
+        .image-upload {
+            background-color: #3498db;
+            padding: 15px 30px;
+            font-size: 18px;
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .image-upload:hover {
+            background-color: #2980b9;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        select, button {
+            padding: 12px;
+            font-size: 18px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border: none;
+            width: 100%;
+        }
+
+        button {
+            background-color: #e67e22;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #d35400;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-top: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .status-message {
+            font-size: 1.2em;
+            margin-top: 15px;
+            color: #f39c12;
+        }
+
+        .result-section img {
+            margin-top: 30px;
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .download-btn {
+            background-color: #2ecc71;
+            color: #fff;
+            font-size: 18px;
+            padding: 12px;
+            margin-top: 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: none;
+            width: 100%;
+            display: none;
+        }
+
+        .download-btn:hover {
+            background-color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>RenXploit HD Image Resizer</h1>
+        <p>Upload an image, choose a resolution, and watch it upscale in high definition!</p>
+        
+        <!-- Image Upload Section -->
+        <div class="upload-section">
+            <label for="imageInput" class="image-upload">Choose Image to Upload</label>
+            <input type="file" id="imageInput" accept="image/*">
+        </div>
+
+        <!-- Resolution Selector -->
+        <div class="upload-section">
+            <select id="resolution" disabled>
+                <option value="QVGA">QVGA (320x240)</option>
+                <option value="HVGA">HVGA (480x320)</option>
+                <option value="VGA">VGA (640x480)</option>
+                <option value="WVGA">WVGA (800x480)</option>
+                <option value="FWVGA">FWVGA (854x480)</option>
+                <option value="qHD">qHD (960x540)</option>
+                <option value="HD">HD (1280x720)</option>
+                <option value="FHD">Full HD (1920x1080)</option>
+                <option value="QHD">Quad HD (2560x1440)</option>
+                <option value="4K">4K (3840x2160)</option>
+                <option value="5K">5K (5120x2880)</option>
+                <option value="8K">8K (7680x4320)</option>
+            </select>
+        </div>
+
+        <!-- Resize and Download Button -->
+        <button id="resizeButton" class="disabled" onclick="resizeImage()" disabled>Resize Image</button>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner" id="loadingSpinner"></div>
+
+        <div class="status-message" id="statusMessage">Please upload an image first.</div>
+
+        <!-- Result Section -->
+        <div class="result-section">
+            <img id="resizedImage" src="" alt="Resized Image will appear here">
+            <button class="download-btn" id="downloadButton" onclick="downloadImage()">Download Resized Image</button>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const resolutionSelect = document.getElementById('resolution');
+        const resizeButton = document.getElementById('resizeButton');
+        const resizedImage = document.getElementById('resizedImage');
+        const statusMessage = document.getElementById('statusMessage');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const downloadButton = document.getElementById('downloadButton');
+        let uploadedImage = null;
+
+        imageInput.addEventListener('change', () => {
+            const file = imageInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImage = new Image();
+                    uploadedImage.src = e.target.result;
+                    uploadedImage.onload = function() {
+                        resolutionSelect.disabled = false;
+                        resizeButton.disabled = false;
+                        resizeButton.classList.remove('disabled');
+                        statusMessage.textContent = 'Image uploaded. Choose a resolution and click "Resize Image".';
+                    };
+                };
+                reader.readAsDataURL(file);
+            } else {
+                resolutionSelect.disabled = true;
+                resizeButton.disabled = true;
+                resizeButton.classList.add('disabled');
+                statusMessage.textContent = 'Please upload an image first.';
+                resizedImage.src = '';
+            }
+        });
+
+        function resizeImage() {
+            if (!uploadedImage) return;
+
+            // Show loading spinner
+            loadingSpinner.style.display = 'block';
+            statusMessage.textContent = 'Resizing image...';
+
+            const resolution = resolutionSelect.value;
+            let width, height;
+
+            switch (resolution) {
+                case 'QVGA': width = 320; height = 240; break;
+                case 'HVGA': width = 480; height = 320; break;
+                case 'VGA': width = 640; height = 480; break;
+                case 'WVGA': width = 800; height = 480; break;
+                case 'FWVGA': width = 854; height = 480; break;
+                case 'qHD': width = 960; height = 540; break;
+                case 'HD': width = 1280; height = 720; break;
+                case 'FHD': width = 1920; height = 1080; break;
+                case 'QHD': width = 2560; height = 1440; break;
+                case '4K': width = 3840; height = 2160; break;
+                case '5K': width = 5120; height = 2880; break;
+                case '8K': width = 7680; height = 4320; break;
+                default: width = uploadedImage.width; height = uploadedImage.height; break;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = width;
+            canvas.height = height;
+
+            ctx.drawImage(uploadedImage, 0, 0, width, height);
+
+            // Hide loading spinner
+            loadingSpinner.style.display = 'none';
+            resizedImage.src = canvas.toDataURL();
+            statusMessage.textContent = `Image resized to ${resolution}.`;
+
+            // Show the download button
+            downloadButton.style.display = 'block';
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.href = resizedImage.src;
+            link.download = 'resized_image.png';
+            link.click();
+        }
+    </script>
+
+</body>
+  </html>
