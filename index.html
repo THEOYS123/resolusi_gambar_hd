@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RenXploit HD Image Resizer</title>
+    <title>RenXploit HD Image Enhancer</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -131,8 +131,8 @@
 <body>
 
     <div class="container">
-        <h1>RenXploit HD Image Resizer</h1>
-        <p>Upload an image, choose a resolution, and watch it upscale in high definition!</p>
+        <h1>RenXploit HD Image Enhancer</h1>
+        <p>Upload an image and enhance its quality (without changing the size)!</p>
         
         <!-- Image Upload Section -->
         <div class="upload-section">
@@ -140,26 +140,8 @@
             <input type="file" id="imageInput" accept="image/*">
         </div>
 
-        <!-- Resolution Selector -->
-        <div class="upload-section">
-            <select id="resolution" disabled>
-                <option value="QVGA">QVGA (320x240)</option>
-                <option value="HVGA">HVGA (480x320)</option>
-                <option value="VGA">VGA (640x480)</option>
-                <option value="WVGA">WVGA (800x480)</option>
-                <option value="FWVGA">FWVGA (854x480)</option>
-                <option value="qHD">qHD (960x540)</option>
-                <option value="HD">HD (1280x720)</option>
-                <option value="FHD">Full HD (1920x1080)</option>
-                <option value="QHD">Quad HD (2560x1440)</option>
-                <option value="4K">4K (3840x2160)</option>
-                <option value="5K">5K (5120x2880)</option>
-                <option value="8K">8K (7680x4320)</option>
-            </select>
-        </div>
-
-        <!-- Resize and Download Button -->
-        <button id="resizeButton" class="disabled" onclick="resizeImage()" disabled>Resize Image</button>
+        <!-- Enhance Button -->
+        <button id="enhanceButton" class="disabled" onclick="enhanceImage()" disabled>Enhance Image</button>
 
         <!-- Loading Spinner -->
         <div class="loading-spinner" id="loadingSpinner"></div>
@@ -168,16 +150,15 @@
 
         <!-- Result Section -->
         <div class="result-section">
-            <img id="resizedImage" src="" alt="Resized Image will appear here">
-            <button class="download-btn" id="downloadButton" onclick="downloadImage()">Download Resized Image</button>
+            <img id="enhancedImage" src="" alt="Enhanced Image will appear here">
+            <button class="download-btn" id="downloadButton" onclick="downloadImage()">Download Enhanced Image</button>
         </div>
     </div>
 
     <script>
         const imageInput = document.getElementById('imageInput');
-        const resolutionSelect = document.getElementById('resolution');
-        const resizeButton = document.getElementById('resizeButton');
-        const resizedImage = document.getElementById('resizedImage');
+        const enhanceButton = document.getElementById('enhanceButton');
+        const enhancedImage = document.getElementById('enhancedImage');
         const statusMessage = document.getElementById('statusMessage');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const downloadButton = document.getElementById('downloadButton');
@@ -191,59 +172,69 @@
                     uploadedImage = new Image();
                     uploadedImage.src = e.target.result;
                     uploadedImage.onload = function() {
-                        resolutionSelect.disabled = false;
-                        resizeButton.disabled = false;
-                        resizeButton.classList.remove('disabled');
-                        statusMessage.textContent = 'Image uploaded. Choose a resolution and click "Resize Image".';
+                        enhanceButton.disabled = false;
+                        enhanceButton.classList.remove('disabled');
+                        statusMessage.textContent = 'Image uploaded. Click "Enhance Image" to improve quality.';
                     };
                 };
                 reader.readAsDataURL(file);
             } else {
-                resolutionSelect.disabled = true;
-                resizeButton.disabled = true;
-                resizeButton.classList.add('disabled');
+                enhanceButton.disabled = true;
+                enhanceButton.classList.add('disabled');
                 statusMessage.textContent = 'Please upload an image first.';
-                resizedImage.src = '';
+                enhancedImage.src = '';
             }
         });
 
-        function resizeImage() {
+        function enhanceImage() {
             if (!uploadedImage) return;
 
             // Show loading spinner
             loadingSpinner.style.display = 'block';
-            statusMessage.textContent = 'Resizing image...';
+            statusMessage.textContent = 'Enhancing image...';
 
-            const resolution = resolutionSelect.value;
-            let width, height;
-
-            switch (resolution) {
-                case 'QVGA': width = 320; height = 240; break;
-                case 'HVGA': width = 480; height = 320; break;
-                case 'VGA': width = 640; height = 480; break;
-                case 'WVGA': width = 800; height = 480; break;
-                case 'FWVGA': width = 854; height = 480; break;
-                case 'qHD': width = 960; height = 540; break;
-                case 'HD': width = 1280; height = 720; break;
-                case 'FHD': width = 1920; height = 1080; break;
-                case 'QHD': width = 2560; height = 1440; break;
-                case '4K': width = 3840; height = 2160; break;
-                case '5K': width = 5120; height = 2880; break;
-                case '8K': width = 7680; height = 4320; break;
-                default: width = uploadedImage.width; height = uploadedImage.height; break;
-            }
-
+            // Create canvas to apply sharpening effect
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            canvas.width = width;
-            canvas.height = height;
+            canvas.width = uploadedImage.width;
+            canvas.height = uploadedImage.height;
+            ctx.drawImage(uploadedImage, 0, 0);
 
-            ctx.drawImage(uploadedImage, 0, 0, width, height);
+            // Apply a simple sharpen filter (using convolution matrix)
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            const sharpenMatrix = [
+                [0, -1, 0],
+                [-1, 5,-1],
+                [0, -1, 0]
+            ];
 
-            // Hide loading spinner
+            for (let y = 1; y < canvas.height - 1; y++) {
+                for (let x = 1; x < canvas.width - 1; x++) {
+                    let r = 0, g = 0, b = 0;
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const px = (x + kx) + (y + ky) * canvas.width;
+                            r += data[px * 4] * sharpenMatrix[ky + 1][kx + 1];
+                            g += data[px * 4 + 1] * sharpenMatrix[ky + 1][kx + 1];
+                            b += data[px * 4 + 2] * sharpenMatrix[ky + 1][kx + 1];
+                        }
+                    }
+                    const idx = (x + y * canvas.width) * 4;
+                    data[idx] = Math.min(255, Math.max(0, r));
+                    data[idx + 1] = Math.min(255, Math.max(0, g));
+                    data[idx + 2] = Math.min(255, Math.max(0, b));
+                }
+            }
+
+            // Apply updated image data
+            ctx.putImageData(imageData, 0, 0);
+
+            // Hide loading spinner and show enhanced image
             loadingSpinner.style.display = 'none';
-            resizedImage.src = canvas.toDataURL();
-            statusMessage.textContent = `Image resized to ${resolution}.`;
+            enhancedImage.src = canvas.toDataURL();
+            statusMessage.textContent = 'Image enhanced successfully.';
 
             // Show the download button
             downloadButton.style.display = 'block';
@@ -251,11 +242,11 @@
 
         function downloadImage() {
             const link = document.createElement('a');
-            link.href = resizedImage.src;
-            link.download = 'resized_image.png';
+            link.href = enhancedImage.src;
+            link.download = 'enhanced_image.png';
             link.click();
         }
     </script>
 
 </body>
-  </html>
+</html>
