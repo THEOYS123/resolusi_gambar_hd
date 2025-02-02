@@ -3,96 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RenXploit HD Image Enhancer</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/esrgan"></script>
+    <title>RenXploit Image Quality Enhancer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/super-resolution"></script> <!-- Super Resolution Model -->
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #2c3e50, #4ca1af);
-            color: white;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            margin: 0;
+            flex-direction: column;
+            text-align: center;
         }
 
         .container {
-            background-color: #34495e;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            text-align: center;
-            width: 90%;
-            max-width: 700px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
         }
 
         h1 {
+            font-size: 2rem;
+            color: #333;
             margin-bottom: 20px;
-            font-size: 24px;
-            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
-        }
-
-        .upload-btn {
-            background: #3498db;
-            padding: 10px 20px;
-            font-size: 16px;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-
-        .upload-btn:hover {
-            background: #2980b9;
         }
 
         input[type="file"] {
-            display: none;
+            margin: 10px 0;
         }
 
-        img {
+        .result-section img {
+            margin-top: 20px;
             max-width: 100%;
             border-radius: 8px;
-            margin-top: 20px;
         }
 
-        .progress {
-            margin-top: 10px;
-            font-size: 16px;
-        }
-
-        .download-btn {
-            display: none;
-            background: #2ecc71;
+        button {
+            background-color: #007BFF;
             color: white;
             padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 16px;
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
             margin-top: 20px;
         }
 
-        .download-btn:hover {
-            background: #27ae60;
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .status {
+            margin-top: 15px;
+            font-size: 1.2rem;
+            color: #666;
         }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h1>RenXploit HD Image Enhancer</h1>
-        <label class="upload-btn" for="imageInput">Upload Image</label>
+        <h1>RenXploit Image Quality Enhancer</h1>
+        <p>Upload an image and let us enhance its quality with AI!</p>
+        
         <input type="file" id="imageInput" accept="image/*">
-
-        <div class="progress" id="progress">No image uploaded.</div>
-        <img id="inputImage" src="" alt="Uploaded Image">
-        <img id="enhancedImage" src="" alt="Enhanced Image">
-
-        <button class="download-btn" id="downloadBtn" onclick="downloadEnhanced()">Download Enhanced Image</button>
+        <button id="enhanceButton" disabled>Enhance Image</button>
+        <div class="status" id="statusMessage">Please upload an image first.</div>
+        
+        <div class="result-section">
+            <img id="enhancedImage" src="" alt="Enhanced Image will appear here">
+        </div>
     </div>
 
-    <script src="./script.js"></script>
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const enhanceButton = document.getElementById('enhanceButton');
+        const enhancedImage = document.getElementById('enhancedImage');
+        const statusMessage = document.getElementById('statusMessage');
+        let uploadedImage = null;
+
+        // Load the super-resolution model
+        let model;
+        async function loadModel() {
+            model = await tf.automl.loadImageClassification('https://storage.googleapis.com/super-resolution-model/model.json');
+        }
+
+        // Load the image when the user selects it
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImage = new Image();
+                    uploadedImage.src = e.target.result;
+                    uploadedImage.onload = function() {
+                        enhanceButton.disabled = false;
+                        statusMessage.textContent = 'Image uploaded. Click "Enhance Image" to improve its quality.';
+                    };
+                };
+                reader.readAsDataURL(file);
+            } else {
+                enhanceButton.disabled = true;
+                statusMessage.textContent = 'Please upload an image first.';
+                enhancedImage.src = '';
+            }
+        });
+
+        // Enhance the image using the super-resolution model
+        async function enhanceImage() {
+            if (!uploadedImage || !model) {
+                statusMessage.textContent = 'Model is loading or image not uploaded.';
+                return;
+            }
+
+            statusMessage.textContent = 'Enhancing image...';
+            const imageTensor = tf.browser.fromPixels(uploadedImage);
+
+            // Preprocess image for model
+            const resizedImage = tf.image.resizeBilinear(imageTensor, [224, 224]);
+            const normalizedImage = resizedImage.expandDims(0).div(255.0);
+
+            // Enhance the image using the super-resolution model
+            const enhancedTensor = await model.predict(normalizedImage);
+            const enhancedImageData = enhancedTensor.squeeze().mul(255).toInt();
+
+            // Display the enhanced image
+            tf.browser.toPixels(enhancedImageData, enhancedImage);
+
+            statusMessage.textContent = 'Image enhancement complete!';
+        }
+
+        enhanceButton.addEventListener('click', enhanceImage);
+
+        // Load the super-resolution model when the page loads
+        loadModel();
+    </script>
+
 </body>
 </html>
